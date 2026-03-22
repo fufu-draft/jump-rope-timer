@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>跳绳跟练计时器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --green:#1D9E75;--green-l:#E1F5EE;--green-d:#0F6E56;
+  --blue:#378ADD;--blue-l:#E6F1FB;
+  --coral:#D85A30;--coral-l:#FAECE7;
+  --gray:#888780;--gray-l:#F5F5F2;--gray-d:#444441;
+  --text:#2C2C2A;--text2:#5F5E5A;--text3:#888780;
+  --border:#e8e6e0;--bg:#fff;--bg2:#F8F7F4;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg2);color:var(--text);min-height:100vh}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── HOME ── */
+#home{padding:20px 16px 32px;gap:20px}
+.logo-row{display:flex;align-items:center;gap:10px;padding:8px 0}
+.logo-icon{width:36px;height:36px;background:var(--green);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round}
+.logo-text{font-size:17px;font-weight:600;color:var(--text)}
+.logo-sub{font-size:12px;color:var(--text3);margin-top:1px}
+.card{background:var(--bg);border-radius:var(--radius);border:0.5px solid var(--border);padding:16px}
+.card-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:10px}
+textarea{width:100%;border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:14px;color:var(--text);background:var(--bg2);resize:none;outline:none;font-family:inherit;line-height:1.6}
+textarea:focus{border-color:var(--green)}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.row label{font-size:13px;color:var(--text2);white-space:nowrap;min-width:60px}
+.row input[type=number]{flex:1;border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;color:var(--text);background:var(--bg2);outline:none;font-family:inherit}
+.row input:focus{border-color:var(--green)}
+.row select{flex:1;border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;color:var(--text);background:var(--bg2);outline:none;font-family:inherit;appearance:none}
+.big-btn{width:100%;padding:16px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;letter-spacing:0.3px;transition:opacity .15s}
+.big-btn:active{opacity:.85}
+.big-btn:disabled{background:var(--gray);cursor:not-allowed}
+.preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.preset-chip{padding:5px 12px;border-radius:20px;border:0.5px solid var(--border);font-size:12px;color:var(--text2);background:var(--bg);cursor:pointer;transition:all .15s}
+.preset-chip:active,.preset-chip.sel{background:var(--green-l);border-color:var(--green);color:var(--green-d);font-weight:500}
+.status-msg{font-size:13px;color:var(--text3);text-align:center;padding:8px 0;min-height:22px}
+.status-msg.err{color:var(--coral)}
+.status-msg.ok{color:var(--green)}
+
+/* ── TIMER ── */
+#timer{background:var(--bg2)}
+.timer-header{display:flex;align-items:center;gap:12px;padding:16px;background:var(--bg);border-bottom:0.5px solid var(--border)}
+.back-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.back-btn svg{width:16px;height:16px;fill:none;stroke:var(--text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.timer-title{font-size:15px;font-weight:500;flex:1}
+.progress-info{font-size:12px;color:var(--text3)}
+
+.timer-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;gap:16px}
+.phase-badge{padding:4px 14px;border-radius:20px;font-size:12px;font-weight:500}
+.action-name{font-size:26px;font-weight:700;color:var(--text);text-align:center;line-height:1.3;min-height:64px;display:flex;align-items:center;justify-content:center}
+.tip-text{font-size:13px;color:var(--text3);text-align:center;line-height:1.6;min-height:40px;padding:0 8px}
+
+.ring-wrap{position:relative;width:200px;height:200px}
+.ring-wrap svg{width:200px;height:200px;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--gray-l);stroke-width:10}
+.ring-fg{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s linear,stroke .3s}
+.ring-center{position:absolute;top:0;left:0;width:200px;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.ring-time{font-size:52px;font-weight:700;color:var(--text);line-height:1}
+.ring-label{font-size:12px;color:var(--text3);font-weight:400}
+
+.next-up{background:var(--bg);border-radius:var(--radius);border:0.5px solid var(--border);padding:12px 16px;width:100%;display:flex;align-items:center;gap:10px}
+.next-label{font-size:11px;color:var(--text3);white-space:nowrap}
+.next-name{font-size:13px;color:var(--text);font-weight:500;flex:1}
+.next-dur{font-size:12px;color:var(--text3)}
+
+.ctrl-row{display:flex;gap:12px;width:100%;justify-content:center;padding-bottom:8px}
+.ctrl-btn{width:56px;height:56px;border-radius:50%;border:0.5px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+.ctrl-btn:active{background:var(--gray-l)}
+.ctrl-btn.primary{width:72px;height:72px;background:var(--green);border-color:var(--green)}
+.ctrl-btn.primary:active{opacity:.85}
+.ctrl-btn svg{width:22px;height:22px;fill:none;stroke:var(--text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ctrl-btn.primary svg{stroke:#fff}
+
+.steps-scroll{width:100%;overflow-x:auto;padding-bottom:4px}
+.steps-row{display:flex;gap:6px;padding:0 2px;width:max-content}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--gray-l);border:0.5px solid var(--border);flex-shrink:0;transition:background .2s}
+.step-dot.done{background:var(--green-d)}
+.step-dot.cur{background:var(--green);transform:scale(1.4)}
+.step-dot.rest{background:var(--blue-l)}
+
+/* done screen */
+#done{align-items:center;justify-content:center;padding:32px 20px;gap:20px;text-align:center}
+.done-icon{width:72px;height:72px;border-radius:50%;background:var(--green-l);display:flex;align-items:center;justify-content:center}
+.done-icon svg{width:36px;height:36px;fill:none;stroke:var(--green);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.done-title{font-size:22px;font-weight:700;color:var(--text)}
+.done-sub{font-size:14px;color:var(--text2);line-height:1.6}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:300px}
+.stat-card{background:var(--bg);border-radius:var(--radius-sm);border:0.5px solid var(--border);padding:14px;text-align:center}
+.stat-val{font-size:22px;font-weight:700;color:var(--green)}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen active" id="home">
+  <div class="logo-row">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5v6M9 10l3 3.5 3-3.5"/><path d="M5 12c0 0 2-3 7-3s7 3 7 3"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">跳绳跟练计时器</div>
+      <div class="logo-sub">输入训练计划，自动生成语音计时</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">快速选择预设计划</div>
+    <div class="preset-row">
+      <div class="preset-chip" onclick="loadPreset(0)">第1–2周 基础</div>
+      <div class="preset-chip" onclick="loadPreset(1)">第3–5周 专项</div>
+      <div class="preset-chip" onclick="loadPreset(2)">第6–8周 强化</div>
+      <div class="preset-chip" onclick="loadPreset(3)">Tabata</div>
+    </div>
+    <div class="card-title">或输入自定义计划</div>
+    <textarea id="planInput" rows="5" placeholder="例如：
+双脚跳 60秒，休息30秒，重复3组
+单脚跳 45秒，休息30秒，重复2组
+高抬腿跳 30秒，休息30秒，重复3组"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-title">个人信息（用于热量计算）</div>
+    <div class="row"><label>体重</label><input type="number" id="weight" value="57" min="30" max="150"><span style="font-size:13px;color:var(--text3);margin-left:4px">kg</span></div>
+    <div class="row"><label>语音提示</label>
+      <select id="voiceMode">
+        <option value="full">完整提示（动作名+倒计时）</option>
+        <option value="action">仅动作名</option>
+        <option value="count">仅倒计时</option>
+        <option value="off">关闭语音</option>
+      </select>
+    </div>
+    <div class="row"><label>节拍声</label>
+      <select id="beatMode">
+        <option value="on">开启</option>
+        <option value="off">关闭</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-msg" id="statusMsg"></div>
+  <button class="big-btn" id="startBtn" onclick="startWorkout()">生成计时器并开始</button>
+</div>
+
+<!-- TIMER -->
+<div class="screen" id="timer">
+  <div class="timer-header">
+    <div class="back-btn" onclick="goHome()">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div class="timer-title" id="timerTitle">训练中</div>
+    <div class="progress-info" id="progressInfo">1 / 1</div>
+  </div>
+
+  <div class="timer-main">
+    <div class="phase-badge" id="phaseBadge">准备</div>
+    <div class="action-name" id="actionName">准备开始</div>
+
+    <div class="ring-wrap">
+      <svg viewBox="0 0 200 200">
+        <circle class="ring-bg" cx="100" cy="100" r="88"/>
+        <circle class="ring-fg" id="ringFg" cx="100" cy="100" r="88" stroke-dasharray="553" stroke-dashoffset="0"/>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-time" id="ringTime">0</div>
+        <div class="ring-label" id="ringLabel">秒</div>
+      </div>
+    </div>
+
+    <div class="tip-text" id="tipText"></div>
+
+    <div class="next-up" id="nextUp">
+      <div class="next-label">下一个</div>
+      <div class="next-name" id="nextName">—</div>
+      <div class="next-dur" id="nextDur"></div>
+    </div>
+
+    <div class="ctrl-row">
+      <div class="ctrl-btn" onclick="prevStep()" title="上一个">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </div>
+      <div class="ctrl-btn primary" id="playBtn" onclick="togglePlay()">
+        <svg id="playIcon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      </div>
+      <div class="ctrl-btn" onclick="nextStep()" title="下一个">
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <div class="steps-scroll"><div class="steps-row" id="stepsRow"></div></div>
+  </div>
+</div>
+
+<!-- DONE -->
+<div class="screen" id="done">
+  <div class="done-icon">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <div class="done-title">训练完成！</div>
+  <div class="done-sub" id="doneSub">今天表现很棒，继续保持！</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-val" id="statTime">0</div><div class="stat-lbl">训练时长（分钟）</div></div>
+    <div class="stat-card"><div class="stat-val" id="statKcal">0</div><div class="stat-lbl">消耗热量（千卡）</div></div>
+    <div class="stat-card"><div class="stat-val" id="statSets">0</div><div class="stat-lbl">完成组数</div></div>
+    <div class="stat-card"><div class="stat-val" id="statSteps">0</div><div class="stat-lbl">训练步骤</div></div>
+  </div>
+  <button class="big-btn" onclick="goHome()" style="max-width:300px;width:100%">返回首页</button>
+</div>
+
+<script>
+const PRESETS = [
+  `双脚跳 60秒，休息30秒，重复3组
+左右交替跳 45秒，休息30秒，重复2组
+高抬腿跳 20秒，休息30秒，重复2组`,
+  `开合跳 45秒，休息30秒，重复4组
+单脚跳强化 60秒，休息30秒，重复2组
+高频小步跳 20秒，休息20秒，重复4组`,
+  `Tabata全力跳 20秒，休息10秒，重复8组
+开合跳 45秒，休息30秒，重复3组
+快速双脚跳 45秒，六点步伐30秒，重复5组`,
+  `全力跳 20秒，休息10秒，重复8组`
+];
+
+const TIPS = {
+  '双脚跳':'两脚并拢，前脚掌着地，膝盖微弯',
+  '左右交替跳':'每次绳过换脚，支撑脚前脚掌发力',
+  '高抬腿跳':'抬腿至腰高，落地时膝盖弯曲缓冲',
+  '开合跳':'跳起时脚向两侧打开，落地并拢重心居中',
+  '单脚跳':'前脚掌着地，脚踝保持稳定，不要锁膝',
+  '单脚跳强化':'前脚掌着地，脚踝保持稳定，不要锁膝',
+  '高频小步跳':'脚踝发力弹地，频率优先，幅度极小',
+  '快速双脚跳':'保持节奏，手腕甩绳，核心收紧',
+  '六点步伐':'想象球的落点，快速启动移步到位',
+  'Tabata全力跳':'全力冲刺，感受最大心率',
+  '全力跳':'全力冲刺，感受最大心率',
+};
+
+const PHASE_COLORS = {
+  '训练':  {bg:'#E1F5EE',color:'#0F6E56'},
+  '休息':  {bg:'#E6F1FB',color:'#185FA5'},
+  '准备':  {bg:'#F5F5F2',color:'#5F5E5A'},
+  '完成':  {bg:'#E1F5EE',color:'#0F6E56'},
+};
+
+function phaseStyle(type){
+  const c = PHASE_COLORS[type] || PHASE_COLORS['训练'];
+  return `background:${c.bg};color:${c.color}`;
+}
+
+function loadPreset(i){
+  document.getElementById('planInput').value = PRESETS[i];
+  document.querySelectorAll('.preset-chip').forEach((c,j)=>c.classList.toggle('sel',j===i));
+}
+
+function parsePlan(text){
+  const steps = [];
+  const lines = text.trim().split('\n').filter(l=>l.trim());
+  for(const line of lines){
+    const l = line.trim();
+    if(!l) continue;
+    const durMatch = l.match(/(\d+)\s*秒/g);
+    const repMatch = l.match(/重复\s*(\d+)\s*[组次]/);
+    const reps = repMatch ? parseInt(repMatch[1]) : 1;
+    let actionName = l.split(/\d+秒/)[0].replace(/，.*$/,'').replace(/,.*$/,'').trim();
+    actionName = actionName.replace(/^[，,\s]+|[，,\s]+$/g,'').trim();
+    if(!actionName) actionName = '训练';
+
+    if(durMatch && durMatch.length >= 2){
+      const workSec = parseInt(durMatch[0]);
+      const restSec = parseInt(durMatch[1]);
+      for(let r=0; r<reps; r++){
+        steps.push({name:actionName, dur:workSec, type:'训练', set:r+1, totalSets:reps});
+        if(r < reps-1 || lines.indexOf(line) < lines.length-1){
+          steps.push({name:'休息', dur:restSec, type:'休息', set:r+1, totalSets:reps});
+        }
+      }
+    } else if(durMatch && durMatch.length === 1){
+      const workSec = parseInt(durMatch[0]);
+      for(let r=0; r<reps; r++){
+        steps.push({name:actionName, dur:workSec, type:'训练', set:r+1, totalSets:reps});
+      }
+    }
+  }
+  return steps;
+}
+
+let steps=[], curIdx=0, timeLeft=0, playing=false, timer=null;
+let beatCtx=null, beatInterval=null;
+let totalDur=0, startTime=null;
+
+function startWorkout(){
+  const text = document.getElementById('planInput').value.trim();
+  if(!text){ showStatus('请输入训练计划或选择预设','err'); return; }
+  const parsed = parsePlan(text);
+  if(!parsed.length){ showStatus('无法解析训练计划，请检查格式','err'); return; }
+
+  steps = [{name:'准备开始', dur:5, type:'准备'}].concat(parsed);
+  totalDur = steps.reduce((s,x)=>s+x.dur,0);
+  curIdx = 0;
+  playing = true;
+  startTime = Date.now();
+
+  showScreen('timer');
+  buildDots();
+  loadStep(0);
+  startTick();
+  if(document.getElementById('beatMode').value==='on') startBeat();
+  document.getElementById('timerTitle').textContent = '跟练中';
+}
+
+function loadStep(idx){
+  if(idx >= steps.length){ finishWorkout(); return; }
+  const s = steps[idx];
+  timeLeft = s.dur;
+
+  document.getElementById('actionName').textContent = s.name;
+  document.getElementById('ringTime').textContent = s.dur;
+  document.getElementById('ringLabel').textContent = '秒';
+  const badge = document.getElementById('phaseBadge');
+  badge.textContent = s.type || '训练';
+  badge.style.cssText = phaseStyle(s.type || '训练');
+
+  const tip = TIPS[s.name] || (s.type==='休息' ? '放松呼吸，准备下一组' : '保持节奏，专注发力');
+  document.getElementById('tipText').textContent = tip;
+
+  updateRing(s.dur, s.dur, s.type);
+  updateProgress();
+  updateNext();
+  updateDots();
+  speak(s, document.getElementById('voiceMode').value);
+
+  if(s.type==='训练') setBeatBpm(100);
+  else if(s.type==='准备') setBeatBpm(60);
+  else stopBeat();
+}
+
+function updateRing(left, total, type){
+  const circ = 2*Math.PI*88;
+  const pct = total>0 ? left/total : 0;
+  const offset = circ*(1-pct);
+  const fg = document.getElementById('ringFg');
+  fg.style.strokeDashoffset = offset;
+  const colors = {训练:'#1D9E75',休息:'#378ADD',准备:'#888780'};
+  fg.style.stroke = colors[type] || '#1D9E75';
+}
+
+function startTick(){
+  clearInterval(timer);
+  timer = setInterval(()=>{
+    if(!playing) return;
+    timeLeft--;
+    document.getElementById('ringTime').textContent = timeLeft;
+    updateRing(timeLeft, steps[curIdx].dur, steps[curIdx].type);
+    if(timeLeft <= 3 && timeLeft > 0) speakCount(timeLeft);
+    if(timeLeft <= 0){ clearInterval(timer); curIdx++; if(curIdx<steps.length){loadStep(curIdx);startTick();}else{finishWorkout();} }
+  },1000);
+}
+
+function togglePlay(){
+  playing = !playing;
+  const icon = document.getElementById('playIcon');
+  if(playing){
+    icon.innerHTML='<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    startTick();
+    if(document.getElementById('beatMode').value==='on') startBeat();
+  } else {
+    icon.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';
+    clearInterval(timer);
+    stopBeat();
+  }
+}
+
+function prevStep(){ clearInterval(timer); curIdx=Math.max(0,curIdx-1); loadStep(curIdx); if(playing)startTick(); }
+function nextStep(){ clearInterval(timer); curIdx++; if(curIdx<steps.length){loadStep(curIdx);if(playing)startTick();}else{finishWorkout();} }
+
+function updateProgress(){
+  const trainSteps = steps.filter(s=>s.type==='训练');
+  const curTrain = steps.slice(0,curIdx+1).filter(s=>s.type==='训练').length;
+  document.getElementById('progressInfo').textContent = `${curIdx+1} / ${steps.length}`;
+}
+
+function updateNext(){
+  const next = steps[curIdx+1];
+  if(next){
+    document.getElementById('nextName').textContent = next.name + (next.totalSets>1?` (第${next.set}/${next.totalSets}组)`:'');
+    document.getElementById('nextDur').textContent = next.dur+'秒';
+    document.getElementById('nextUp').style.display='flex';
+  } else {
+    document.getElementById('nextName').textContent = '全部完成！';
+    document.getElementById('nextDur').textContent = '';
+  }
+}
+
+function buildDots(){
+  const row = document.getElementById('stepsRow');
+  row.innerHTML='';
+  steps.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='step-dot'+(steps[i].type==='休息'?' rest':'');
+    d.id='dot'+i;
+    row.appendChild(d);
+  });
+}
+
+function updateDots(){
+  steps.forEach((_,i)=>{
+    const d=document.getElementById('dot'+i);
+    if(!d)return;
+    d.classList.remove('done','cur');
+    if(i<curIdx) d.classList.add('done');
+    else if(i===curIdx) d.classList.add('cur');
+  });
+}
+
+function finishWorkout(){
+  clearInterval(timer); stopBeat();
+  const elapsed = Math.round((Date.now()-startTime)/1000);
+  const mins = Math.round(elapsed/60);
+  const weight = parseFloat(document.getElementById('weight').value)||57;
+  const kcal = Math.round(weight * 0.14 * mins);
+  const trainSets = steps.filter(s=>s.type==='训练').length;
+  document.getElementById('statTime').textContent = mins;
+  document.getElementById('statKcal').textContent = kcal;
+  document.getElementById('statSets').textContent = trainSets;
+  document.getElementById('statSteps').textContent = steps.length;
+  document.getElementById('doneSub').textContent = `消耗约 ${kcal} 千卡，完成 ${trainSets} 组训练，太棒了！`;
+  speak({name:'训练完成，做得很好！',type:'完成'},'action');
+  showScreen('done');
+}
+
+function goHome(){
+  clearInterval(timer); stopBeat(); playing=false;
+  showScreen('home');
+  document.getElementById('playIcon').innerHTML='<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showStatus(msg,type){
+  const el=document.getElementById('statusMsg');
+  el.textContent=msg;
+  el.className='status-msg'+(type?' '+type:'');
+  setTimeout(()=>el.textContent='',3000);
+}
+
+// ── VOICE ──
+let synth = window.speechSynthesis;
+let voices = [];
+function loadVoices(){ voices=synth.getVoices(); }
+if(synth.onvoiceschanged!==undefined) synth.onvoiceschanged=loadVoices;
+loadVoices();
+
+function getBestVoice(){
+  const zhVoice = voices.find(v=>v.lang.startsWith('zh')||v.name.includes('Chinese')||v.name.includes('中文'));
+  return zhVoice || null;
+}
+
+function speak(step, mode){
+  if(!synth||mode==='off') return;
+  synth.cancel();
+  let text='';
+  if(mode==='full'||mode==='action'){
+    if(step.type==='休息') text='休息';
+    else if(step.type==='准备') text='准备开始';
+    else {
+      text = step.name;
+      if(step.totalSets>1) text+=`，第${step.set}组，共${step.totalSets}组`;
+    }
+  }
+  if(!text) return;
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='zh-CN';u.rate=0.95;u.pitch=1;u.volume=1;
+  const v=getBestVoice();
+  if(v) u.voice=v;
+  synth.speak(u);
+}
+
+function speakCount(n){
+  const mode=document.getElementById('voiceMode').value;
+  if(!synth||mode==='off'||mode==='action') return;
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(String(n));
+  u.lang='zh-CN';u.rate=1.1;u.volume=1;
+  const v=getBestVoice();if(v)u.voice=v;
+  synth.speak(u);
+}
+
+// ── BEAT ──
+let bpm=100;
+function startBeat(){
+  if(!beatCtx){ try{ beatCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){return;} }
+  stopBeat();
+  scheduleBeat();
+}
+function scheduleBeat(){
+  if(!beatCtx||document.getElementById('beatMode').value==='off') return;
+  beatInterval=setInterval(()=>playClick(),60000/bpm);
+}
+function stopBeat(){ clearInterval(beatInterval); }
+function setBeatBpm(b){
+  bpm=b;
+  if(document.getElementById('beatMode').value==='on'&&playing){ stopBeat();scheduleBeat(); }
+}
+function playClick(){
+  if(!beatCtx) return;
+  const o=beatCtx.createOscillator();
+  const g=beatCtx.createGain();
+  o.connect(g);g.connect(beatCtx.destination);
+  o.frequency.value=880;
+  g.gain.setValueAtTime(0.08,beatCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,beatCtx.currentTime+0.05);
+  o.start(beatCtx.currentTime);o.stop(beatCtx.currentTime+0.06);
+}
+
+document.getElementById('planInput').addEventListener('input',()=>{
+  document.querySelectorAll('.preset-chip').forEach(c=>c.classList.remove('sel'));
+});
+</script>
+</body>
+</html>
